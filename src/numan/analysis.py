@@ -14,6 +14,9 @@ from tqdm import tqdm
 import pandas as pd
 import PyPDF2
 
+from scipy.spatial import cKDTree
+import copy
+
 # try:
 import ants
 # except ImportError:
@@ -21,6 +24,103 @@ import ants
 
 from .utils import *
 
+def nearest_neighbour_assignmnet(centroids1, centroids2, depth=None, radius = None):
+    """
+    Find nearest k-dimensional point pairs between centroids1 and centroids1 and returns the matching and the distance.
+    depth is the cutoff distance for the nearest neighbor search.
+
+    Args:
+        centroids1: array with first pointcloud with shape (n, k)
+        centroids2: array with second pointcloud with shape (m, k)
+        depth: maximum number of nearest neighbors to search for
+        radius: maximum euclidean distance between points in a pair
+
+    Returns:
+        distances: the distances between the nearest neighbors in centroids1 and centroids2. shape (len(centroids2), depth)
+        indices_1: the indices of the nearest neighbors in centroids1 for each point in centroids2. shape (len(centroids2), depth)
+        indices_2: the indices of the points in centroids2. shape (len(centroids2),)
+    """
+
+    if depth is None:
+        # set depth to be the minimum of the number of points or 100 ( arbitrary)
+        depth = min(max(len(centroids1), len(centroids2)), 100)
+
+    indices_2 = np.arange(len(centroids2))
+    distances, indices_1 = cKDTree(centroids1).query(centroids2, k = depth, distance_upper_bound=radius)
+
+    return distances, indices_1, indices_2
+
+def unique_nearest_neighbour_assignment(centroids1, centroids2, depth=None, radius = None, return_bothways = False):
+    """
+    Find nearest k-dimensional point pairs between centroids1 and centroids1 and returns the matching and the distance.
+    Returns the assignmnets and distances in both directions if return_bothways is True.
+
+    Args:
+        centroids1: array with first pointcloud with shape (n, k)
+        centroids2: array with second pointcloud with shape (m, k)
+        depth: maximum number of nearest neighbors to search for
+        radius: maximum euclidean distance between points in a pair
+        return_bothways: if True, returns the assignments and distances in both directions
+
+    Returns:
+        distances_2_to_1: the distances between the nearest neighbors in centroids1 and centroids2. 
+            shape (len(centroids2),)
+        assignment_2_to_1: the indices of the nearest neighbors in centroids1 for each point in centroids2. 
+            shape (len(centroids2),)
+        indices_2: the indices of the points in centroids2. 
+            shape (len(centroids2),)
+     
+        distances_1_to_2: the distances between the nearest neighbors in centroids2 and centroids1. 
+            shape (len(centroids1),)
+        assignment_1_to_2: the indices of the nearest neighbors in centroids2 for each point in centroids1. 
+            shape (len(centroids1),)
+        indices_1: the indices of the points in centroids1. 
+            shape (len(centroids1),)
+    """
+    if depth is None:
+        # set depth to be the minimum of the number of points or 100 ( arbitrary)
+        depth = min(max(len(centroids1), len(centroids2)), 100)
+    
+    assert depth > 1, "depth must be larger than 1, otherwise there are no duplicates"
+
+    distances, indices_1, indices_2 = nearest_neighbour_assignmnet(centroids1, centroids2, 
+                                                                   depth = depth, radius = radius)
+
+    # resolve non-unique assignments
+    # assert that indices_2 are simply the indices of the points in centroids2 (0, 1, 2, 3, ...)
+    # since this is importnat for the next step
+    assert (indices_2 == np.arange(len(centroids2))).all()
+
+    assignment_2_to_1 = np.zeros(len(centroids2), dtype=int) - 1 # for each point in centroids2, the index of the point in centroids1 
+    assignment_1_to_2 = np.zeros(len(centroids1), dtype=int) - 1 # for each point in centroids1, the index of the point in centroids2
+    distances_2_to_1 = np.full(len(centroids2), np.inf)
+    if return_bothways:
+        distances_1_to_2 = np.full(len(centroids1), np.inf)
+
+
+    # for each order of the nearest neighbor search, find the duplicates
+    for d in range(depth):
+        # sort the distances and corresponding order of indices in centroids2
+        sorted_indices_2 = np.argsort(distances[:, d])
+        for idx2 in sorted_indices_2:
+            if distances[idx2, d] < radius:
+                # the index of the point in centroids1 that is closest to the point in centroids2 with index idx2 for the d-th order of the nearest neighbor search
+                pair_idx1 = indices_1[idx2, d]
+                # if both points are not yet assigned, assign them to each other
+                if assignment_1_to_2[pair_idx1] == -1 and assignment_2_to_1[idx2] == -1:
+
+                    assignment_2_to_1[idx2] = pair_idx1
+                    assignment_1_to_2[pair_idx1] = idx2
+
+                    distances_2_to_1[idx2] = distances[idx2, d]
+                    if return_bothways:
+                        distances_1_to_2[pair_idx1] = distances[idx2, d]
+
+    if return_bothways:
+        indices_1 = np.arange(len(centroids1))
+        return distances_2_to_1, assignment_2_to_1, indices_2, distances_1_to_2, assignment_1_to_2, indices_1
+    else:
+        return distances_2_to_1, assignment_2_to_1, indices_2
 
 class Spot:
     """
@@ -552,7 +652,7 @@ class Spots:
         """
         Create a 3D volume that only shows the spots that belong to the particular group
         group : list[bool], the length of spots
-        mask_shape : the shape of the 3D volume of the mask
+        mask_shape : the shape of the 3D volume of the mask (the whole image shape)
         diameter : list or numpy array or int, diameter in zyx order. If int, then it is a sphere.
                     If not None, diameter will be used to create a mask.
                     If None, then spots diameter will be used and units will be ignored.
