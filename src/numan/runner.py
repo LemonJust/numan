@@ -37,9 +37,13 @@ def run_notebook(notebook, notify=True, tag_users=None):
             if notify:
                 msg = f'Successfully executed the notebook {notebook}.\n\n'
                 slack_notification(msg, tag_users=tag_users)
-            with open(f"done_{notebook}", mode='w', encoding='utf-8') as f:
+            # add done tag to the end of the notebook
+            done_filename = notebook.replace('.ipynb', '_done.ipynb')
+            with open(done_filename, mode='w', encoding='utf-8') as f:
                 nbformat.write(nb, f)
         else:
+            # add failed tag to the end of the notebook
+            failed_filename = notebook.replace('.ipynb', '_failed.ipynb')
             with open(f"failed_{notebook}", mode='w', encoding='utf-8') as f:
                 nbformat.write(nb, f)
 
@@ -76,7 +80,8 @@ def run_notebooks(notebooks, notebooks_before_manual=None, notify=True, tag_user
                                     notify=notify, tag_users=tag_users):
                 break
         else:
-            if os.path.exists(f"done_{nb_run}"):
+            done_filename = nb_run.replace('.ipynb', '_done.ipynb')
+            if os.path.exists(done_filename):
                 msg = f"Notebook done_{nb_run} already exists, skipping {nb_run}\n"
                 print(msg)
                 if notify:
