@@ -44,7 +44,7 @@ def run_notebook(notebook, notify=True, tag_users=None):
         else:
             # add failed tag to the end of the notebook
             failed_filename = notebook.replace('.ipynb', '_failed.ipynb')
-            with open(f"failed_{notebook}", mode='w', encoding='utf-8') as f:
+            with open(failed_filename, mode='w', encoding='utf-8') as f:
                 nbformat.write(nb, f)
 
 
