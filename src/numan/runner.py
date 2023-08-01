@@ -82,7 +82,7 @@ def run_notebooks(notebooks, notebooks_before_manual=None, notify=True, tag_user
         else:
             done_filename = nb_run.replace('.ipynb', '_done.ipynb')
             if os.path.exists(done_filename):
-                msg = f"Notebook done_{nb_run} already exists, skipping {nb_run}\n"
+                msg = f"Notebook {done_filename} already exists, skipping {nb_run}\n"
                 print(msg)
                 if notify:
                     slack_notification(msg, tag_users=tag_users)
