@@ -4,13 +4,13 @@ from .notifications import slack_notification
 import os
 
 
-def run_notebook(notebook, notify=True, tag_users=None):
+def run_notebook(notebook, kernel, notify=True, tag_users=None):
     try:
         with open(notebook) as f:
             nb = nbformat.read(f, as_version=4)
 
-        # waits 3 hours for the cell to finish execution
-        ep = ExecutePreprocessor(timeout=3 * 60 * 60, kernel_name="numan")
+        # waits 6 hours for the cell to finish execution
+        ep = ExecutePreprocessor(timeout=6 * 60 * 60, kernel_name = kernel)
     except Exception as e:
         msg = f'Error before executing the notebook {notebook}\n'
         msg += e
@@ -68,14 +68,14 @@ def wait_for_manual_step(current_notebook, notebooks_before_manual,
     return do_wait
 
 
-def run_notebooks(notebooks, notebooks_before_manual=None, notify=True, tag_users=None, rerun=False):
+def run_notebooks(notebooks, kernel, notebooks_before_manual=None, notify=True, tag_users=None, rerun=False):
     if notify:
         msg = f"Started processing notebooks in {os.getcwd()}"
         slack_notification(msg, tag_users=tag_users)
 
     for nb_run in notebooks:
         if rerun:
-            run_notebook(nb_run, notify=notify, tag_users=tag_users)
+            run_notebook(nb_run, kernel, notify=notify, tag_users=tag_users)
             if wait_for_manual_step(nb_run, notebooks_before_manual,
                                     notify=notify, tag_users=tag_users):
                 break
@@ -88,7 +88,7 @@ def run_notebooks(notebooks, notebooks_before_manual=None, notify=True, tag_user
                     slack_notification(msg, tag_users=tag_users)
                 pass
             else:
-                run_notebook(nb_run, notify=notify, tag_users=tag_users)
+                run_notebook(nb_run, kernel, notify=notify, tag_users=tag_users)
                 if wait_for_manual_step(nb_run, notebooks_before_manual,
                                         notify=notify, tag_users=tag_users):
                     break
