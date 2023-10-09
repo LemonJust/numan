@@ -62,3 +62,25 @@ notebooks/data/v1.x.x/2vs3vs5/imaris/tscore_SvB_max_Statistics/
 notebooks/data/v1.x.x/2vs3vs5/test_output/
 
 data/test/
+
+notebooks/vodex_si/notebooks2/
+
+notebooks/individual_datasets/2vs3vs5/
+
+notebooks/data/1v2vs3vs5/processed/
+
+data/denoising_2023/16_32_64_128_256_512_1024_1600_2048/
+
+data/denoising_2023/16_32_64_128_256_512_1024/
+
+data/hz09/20230601_Hz09_casper_h2bcamp7f_7dpf_60Z_1hzvol_2P_strscanafter_1/
+
+data/hz09/
+
+data/processed_0/
+
+data/tscore_test/
+
+dist/
+
+notebooks/vodex_si/data/camera_calibration/calibration_offset.tif
